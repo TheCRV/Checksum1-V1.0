@@ -2813,7 +2813,7 @@ void MainWindow::copyFiles05()
                 emit progressBarUpdate05(m_numFilesCopied05);
                 m_selectedFilePaths05_01.removeAt(j);
                 j--;
-                emit progressBarUpdate05(m_numFilesCopied05);
+                //emit progressBarUpdate05(m_numFilesCopied05);
             }
         }
     }

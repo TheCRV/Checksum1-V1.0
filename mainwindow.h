@@ -289,6 +289,7 @@ private:
     QString m_hashTypeVerifyStr05;
     QVector<QString> m_originalFiles05;
     QVector<QString> m_copiedFiles05;
+    //QVector<QString> m_copiedFiles05_02;
     QStringList m_compareFullFilePaths05;
     QStringList m_compareFilePaths05;
     QStringList m_compareFileNames05;
