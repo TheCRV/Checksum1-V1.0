@@ -148,7 +148,6 @@ private slots:
     void on_pushButton_startCopy05_clicked();
     void fileToCopyIsPresentSlot05(QString);
     void updateProgressBar05(int);
-    void updateProgressBarForThreadedFileCopy05(int);
     void on_pushButton_cancelChecksum00_released();
     void resetProgressBarSlot05();
     void on_pushButton_viewResults05_released();
@@ -289,6 +288,8 @@ private:
     QString m_hashTypeVerifyStr05;
     QVector<QString> m_originalFiles05;
     QVector<QString> m_copiedFiles05;
+    QVector<QString> m_originalFiles05_2;
+    QVector<QString> m_copiedFiles05_2;
     //QVector<QString> m_copiedFiles05_02;
     QStringList m_compareFullFilePaths05;
     QStringList m_compareFilePaths05;
@@ -300,7 +301,14 @@ private:
     QFutureWatcher<QVector<QString>> m_copiedFilesChecksumWatcher05;
     QVector<QString> m_originalFilesFutureResults05;
     QVector<QString> m_copiedFilesFutureResults05;
+    QFuture<QVector<QString>> m_originalFilesChecksumFuture05_2;
+    QFuture<QVector<QString>> m_copiedFilesChecksumFuture05_2;
+    QFutureWatcher<QVector<QString>> m_originalFilesChecksumWatcher05_2;
+    QFutureWatcher<QVector<QString>> m_copiedFilesChecksumWatcher05_2;
+    QVector<QString> m_originalFilesFutureResults05_2;
+    QVector<QString> m_copiedFilesFutureResults05_2;
     QStringList m_originalFilesList05;
+    QStringList m_originalFilesList05_2;
     QStringList m_copiedFilesList05;
     QFuture<void> m_compareFuture05;
     QFutureWatcher<void> m_compareFutureWatcher05;
@@ -356,6 +364,8 @@ private:
     void copyIsFinished05();
     void beginFirstChecksum05();
     void firstChecksumCompleted05();
+    void beginIndividualChecksum05();
+    void individualChecksumCompleted05();
     void beginSecondChecksum05();
     void secondChecksumCompleted05();
     void setupToCompare05();

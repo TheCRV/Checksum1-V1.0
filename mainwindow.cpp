@@ -87,6 +87,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&m_multiCopyFilesFutureWatcher05, &QFutureWatcher<QVector<QString>>::finished, this, &MainWindow::copyIsFinished05);
     connect(&m_originalFilesChecksumWatcher05, &QFutureWatcher<QVector<QString>>::finished, this, &MainWindow::firstChecksumCompleted05);
     connect(&m_originalFilesChecksumWatcher05, &QFutureWatcher<QVector<QString>>::progressValueChanged, this, &MainWindow::updateProgressBar05);
+    connect(&m_originalFilesChecksumWatcher05_2, &QFutureWatcher<QVector<QString>>::finished, this, &MainWindow::individualChecksumCompleted05);
+    connect(&m_originalFilesChecksumWatcher05_2, &QFutureWatcher<QVector<QString>>::progressValueChanged, this, &MainWindow::updateProgressBar05);
     connect(&m_copiedFilesChecksumWatcher05, &QFutureWatcher<QVector<QString>>::finished, this, &MainWindow::secondChecksumCompleted05);
     connect(&m_copiedFilesChecksumWatcher05, &QFutureWatcher<QVector<QString>>::progressValueChanged, this, &MainWindow::updateProgressBar05);
     //connect(&m_compareFutureWatcher05, &QFutureWatcher<void>::started, this, &MainWindow::resetProgressBarSlot05);
@@ -2257,6 +2259,7 @@ void MainWindow::treeCopy02()
     m_selectedFilePaths05_01.clear();
     m_selectedFileNames05_01.clear();
     m_selectedFilePaths05_02.clear();
+    m_selectedFileNames05_02.clear();
     m_dirsToCopy05.clear();
     m_selectedDirs05.clear();
     m_sizeOfFiles01 = 0;
@@ -2386,7 +2389,7 @@ void MainWindow::treeCopy02()
         m_fileCounter01++;
     }
 
-    m_sizeOfFilesVector01 = m_selectedFilePaths05_01.count();
+    m_sizeOfFilesVector01 = m_selectedFilePaths05_01.count() + m_selectedFilePaths05_02.count();
     m_numberOfThreads01 = QThreadPool::globalInstance()->maxThreadCount();
 }
 
@@ -2395,6 +2398,8 @@ void MainWindow::browseCopy02()
 {
     m_selectedFilePaths05_01.clear();
     m_selectedFileNames05_01.clear();
+    m_selectedFilePaths05_02.clear();
+    m_selectedFileNames05_02.clear();
     m_selectedDirs05.clear();
     m_dirsToCopy05.clear();
     m_sizeOfFiles01 = 0;
@@ -2519,7 +2524,7 @@ void MainWindow::browseCopy02()
         m_fileCounter01++;
     }
 
-    m_sizeOfFilesVector01 = m_selectedFilePaths05_01.count();
+    m_sizeOfFilesVector01 = m_selectedFilePaths05_01.count() + m_selectedFilePaths05_02.count();
     m_numberOfThreads01 = QThreadPool::globalInstance()->maxThreadCount();
 }
 
@@ -2549,7 +2554,7 @@ void MainWindow::setCopyDisplay02()
 
     ui->textBrowser_showCopy05->clear();
     ui->progressBar01->reset();
-    ui->progressBar01->setRange(0, m_selectedFilePaths05_01.size());
+    ui->progressBar01->setRange(0, m_selectedFilePaths05_01.size() + m_selectedFilePaths05_02.size());
     m_bytesCopied05 = 0;
 
     if(m_listAllFiles01)
@@ -2747,6 +2752,7 @@ void MainWindow::prepareToCopyFiles05()
     m_originalFilesFutureResults05.clear();
     m_copiedFilesFutureResults05.clear();
     m_originalFilesList05.clear();
+    m_originalFilesList05_2.clear();
     m_copiedFilesList05.clear();
     m_originalFileChecksumsList.clear();
     m_copiedFileChecksumsList.clear();
@@ -2817,6 +2823,25 @@ void MainWindow::copyFiles05()
             }
         }
     }
+
+    for(int i = 0; i < m_selectedFilePaths05_02.size(); i++)
+    {
+        QString newFile = m_destination05.at(0) + QDir::separator() + m_selectedFileNames05_02.at(i);
+
+        if(! QFile::copy(m_selectedFilePaths05_02.at(i), newFile))
+        {
+            emit fileToCopyIsPresentSignal05(newFile);
+            m_filesAreCopied01 = false;
+        }
+
+        if(m_filesAreCopied01)
+        {
+            m_numFilesCopied05 += 1;
+            m_originalFiles05_2.append(m_selectedFilePaths05_02.at(i));
+            m_copiedFiles05.append(newFile);
+            emit progressBarUpdate05(m_numFilesCopied05);
+        }
+    }
 }
 
 
@@ -2831,13 +2856,6 @@ void MainWindow::fileToCopyIsPresentSlot05(QString newFile)
 void MainWindow::updateProgressBar05(int progress)
 {
     ui->progressBar01->setValue(progress);
-}
-
-
-void MainWindow::updateProgressBarForThreadedFileCopy05(int progress)
-{
-    m_numFilesCopied05 += progress;
-    ui->progressBar01->setValue(m_numFilesCopied05);
 }
 
 
@@ -2946,7 +2964,91 @@ void MainWindow::firstChecksumCompleted05()
         }
     }
 
+    beginIndividualChecksum05();
+}
+
+
+void MainWindow::beginIndividualChecksum05()
+{
+    m_compareFullFilePaths05.clear();
+    m_compareFilePaths05.clear();
+    m_compareFileNames05.clear();
+    m_compareChecksums05.clear();
+    m_opensslChecksum01->setCallingFunction01(2);
+    m_opensslChecksum01->setHashType01(ui->comboBox_hashType05->currentIndex());
+    ui->progressBar01->reset();
+    ui->progressBar01->setRange(0, m_originalFiles05.size());
+    emit m_originalFilesChecksumWatcher05.progressRangeChanged(0, m_originalFiles05_2.size());
+
+    auto hashFunc05_2 = std::bind(&opensslchecksum::ssl_fileHash01, m_opensslChecksum01, std::placeholders::_1);
+    m_originalFilesChecksumFuture05_2 = QtConcurrent::mapped(m_originalFiles05_2, hashFunc05_2);
+    m_originalFilesChecksumWatcher05_2.setFuture(m_originalFilesChecksumFuture05_2);
+}
+
+
+void MainWindow::individualChecksumCompleted05()
+{
+    for(int i = 0; i < m_originalFilesChecksumFuture05_2.resultCount(); i++)
+    {
+        m_originalFilesFutureResults05_2.append(m_originalFilesChecksumFuture05_2.resultAt(i));
+        QString line = m_originalFilesFutureResults05_2.at(i);
+        m_originalFilesList05_2 += line.split(',', Qt::SkipEmptyParts);
+    }
+
+    for(int i = 0; i < m_originalFilesList05_2.size(); i++)
+    {
+        if(i % 2 == 0)
+        {
+            m_compareFullFilePaths05.append(m_originalFilesList05_2.at(i));
+        }
+        else if(i % 2 != 0)
+        {
+            m_compareChecksums05.append(m_originalFilesList05_2.at(i).trimmed());
+        }
+    }
+
+    QString filePath2;
+    QString fileName2;
+
+    for(int i = 0; i < m_compareFullFilePaths05.count(); i++)
+    {
+        filePath2 = m_compareFullFilePaths05.at(i);
+
+        if(filePath2 == "File Not Found")
+            m_compareFileNames05.append("File Not Found");
+        else if(filePath2 == "Error")
+            m_compareFileNames05.append("Error");
+        else if(filePath2 == "")
+            m_compareFileNames05.append("File Not Found");
+        else
+        {
+            QFileInfo f1(filePath2);
+            fileName2 = f1.fileName();
+            m_compareFileNames05.append(fileName2);
+        }
+    }
+
+    for(int i = 0; i < m_selectedFilePaths05_02.size(); i++)
+    {
+        QDir dir(m_selectedFilePaths05_02.at(i));
+
+        if(! dir.isRoot())
+            dir.cdUp();
+
+        QString relativePath = dir.relativeFilePath(m_selectedFilePaths05_02.at(i));
+        //qDebug() << "Relative Path" << relativePath;
+        OriginalFileChecksums tempStruct;
+        tempStruct.m_fullFilePath01 = m_selectedFilePaths05_02.at(i);
+        tempStruct.m_filePath01 = m_selectedFilePaths05_02.at(i);
+        tempStruct.m_fileName01 = m_compareFileNames05.at(i);
+        tempStruct.m_relativeFilePath01 = relativePath;
+        tempStruct.m_checksum01 = m_compareChecksums05.at(i);
+
+        m_originalFileChecksumsList.push_back(tempStruct);
+    }
+
     ui->textBrowser_showCopy05->insertPlainText("Done.");
+
     beginSecondChecksum05();
 }
 
