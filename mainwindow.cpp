@@ -2678,6 +2678,52 @@ bool MainWindow::createAllFolders05(QString fromDir, QString toDir)
     QDirIterator it1(fromDir, QDir::AllDirs | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
     int i = 0;
 
+    if(! it1.hasNext())
+    {
+        //qDebug() << "from dir " << fromDir1;
+        QString newDir = fromDir.remove(fromDir1);
+        if(newDir.startsWith('/') || newDir.startsWith('\'') || newDir.startsWith(QDir::separator()))
+            newDir = newDir.remove(0, 1);
+
+        //qDebug() << "newDir" << newDir;
+
+        const QString constructedAbsolutePath = newDir.prepend(toDir + QDir::separator());
+        QDir targetDir(constructedAbsolutePath);
+        //qDebug() << "constructedAbsolutePath" << constructedAbsolutePath;
+
+        if(targetDir.exists())
+        {
+            QMessageBox msgBox;
+            msgBox.setText("Folder is already present at destination.");
+            msgBox.setInformativeText("The folder, " + constructedAbsolutePath + ", already exists in the destination.");
+            QPushButton *cancelButton = msgBox.addButton(tr("Cancel"), QMessageBox::RejectRole);
+            msgBox.setDefaultButton(cancelButton);
+            msgBox.exec();
+
+            if(msgBox.clickedButton() == cancelButton)
+            {
+                ui->textBrowser_showCopy05->append("File copy and compare has been canceled.");
+                ui->pushButton_startCopy05->setEnabled(true);
+                ui->pushButton_cancelCopy05->setDisabled(true);
+                ui->pushButton_return05->setEnabled(true);
+                ui->pushButton_viewResults05->setDisabled(true);
+                ui->progressBar01->reset();
+                return false;
+            }
+        }
+        else
+        {
+            if(! dir.mkpath(constructedAbsolutePath))
+            {
+                problemCreatingFolders05(constructedAbsolutePath);
+                return false;
+            }
+        }
+
+        if(i == m_sizeOfFilesVector01)
+            return false;
+    }
+
     while(it1.hasNext())
     {
         it1.next();
